@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="" />
+  <meta name="keywords" content="" />
+  <title>Pitnik Social Network Toolkit</title>
+  <link rel="icon" th:href="@{images/fav.png}" type="image/png" sizes="16x16" />
+
+  <link rel="stylesheet" th:href="@{css/main.min.css}" />
+  <link rel="stylesheet" th:href="@{css/weather-icons.min.css}" />
+  <link rel="stylesheet" th:href="@{css/toast-notification.css}" />
+  <link rel="stylesheet" th:href="@{css/page-tour.css}" />
+  <link rel="stylesheet" th:href="@{css/style.css}" />
+  <link rel="stylesheet" th:href="@{css/color.css}" />
+  <link rel="stylesheet" th:href="@{css/responsive.css}" />
+  <!-- Thư viện SweetAlert 2 -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+
+</head>
+<body>
+
+<script src="https://code.jquery.com/jquery-3.7.0.js" integrity="sha256-JlqSTELeR4TLqP0OG9dxM7yDPqX1ox/HfgiSLBj8+kM=" crossorigin="anonymous"></script>
+
+
+<script>
+  $(document).ready(function() {
+    $("i.edit-icon").click(function() {
+      var id = $(this).data("post-id");
+
+
+      $.ajax({
+        url: "http://localhost:8080/home/api/findById/" + id,
+        method: 'GET',
+        dataType: 'json',
+        headers: {
+          'Accept': 'application/json'
+        },
+        success: function(data) {
+          console.log(data)
+          $("#postContent").val(data.content);
+          $("#updateButton").data("post-id", id);
+        },
+        error: function(error) {
+          console.error('Error:', error);
+        }
+      });
+    });
+
+    $("#updateButton").click(function() {
+      var postId = $(this).data("post-id");
+      var newContent = $("#postContent").val();
+
+
+      if (newContent.trim() === "") {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Lỗi',
+          text: 'Bạn chưa nhập nội dung!',
+          confirmButtonText: 'Đóng'
+        });
+      } else {
+        $.ajax({
+          url: "http://localhost:8080/home/update",
+          method: 'POST',
+          data: {
+            id: postId,
+            content: newContent
+          },
+          success: function(response) {
+            $(".post-content[data-post-id='" + postId + "']").text(newContent);
+            $(".popup-wraper2").removeClass("active");
+            console.log(newContent);
+            console.log("Update successful!");
+          },
+          error: function(error) {
+            console.error('Error:', error);
+          }
+        });
+      }
+    });
+
+    $(".postlikepost").click(function() {
+      var postId = $(this).data("postlike-id");
+      var isLiked = $(this).hasClass("happy");
+      var totalLikesElement = $(this).find(".totallike");
+      var currentTotalLikes = parseInt(totalLikesElement.text());
+
+      if (isLiked) {
+        $(this).removeClass("happy");
+        totalLikesElement.text(currentTotalLikes - 1);
+      } else {
+        $(this).addClass("happy");
+        totalLikesElement.text(currentTotalLikes + 1);
+      }
+      $.ajax({
+        url: "http://localhost:8080/home/like",
+        method: 'POST',
+        data: {
+          postId: postId,
+          isLiked: isLiked
+        },
+        success: function(response) {
+
+          console.log("Like/Unlike successful");
+        },
+        error: function(error) {
+          console.error('Error:', error);
+        }
+      });
+    });
+  }); // Đây là dấu đóng cho hàm $(document).ready(function()
+</script>
+<script>
+  $(document).ready(function() {
+    $(document).on("click", ".cmt", function(event) {
+      event.preventDefault();
+
+      var clickedElement = $(this);
+      var commentId = clickedElement.data("comment-id");
+      var isLiked = clickedElement.hasClass("activiti");
+
+      console.log("commentId:", commentId);
+      console.log("isLiked:", isLiked);
+      if (isLiked) {
+        $(this).removeClass("activiti");
+        $(this).css("color", "rgb(173 173 253)");
+      } else {
+        $(this).addClass("activiti");
+        $(this).css("color", "red");
+      }
+
+      var totalLikesElement = $(this).siblings("#scmtlike");
+      var currentTotalLikes = parseInt(totalLikesElement.text());
+
+      if (isLiked) {
+        totalLikesElement.text(currentTotalLikes - 1);
+      } else {
+        totalLikesElement.text(currentTotalLikes + 1);
+      }
+
+      $.ajax({
+        url: "http://localhost:8080/home/likecmt",
+        method: 'POST',
+        data: {
+          commentId: commentId,
+          isLiked: isLiked
+        },
+        success: function(response) {
+          console.log("Like/Unlike successful");
+        },
+        error: function(error) {
+          console.error('Error:', error);
+        }
+      });
+    });
+  });
+
+</script>
+<script>
+  $(document).ready(function() {
+
+    $(document).on("click", ".delete-comment", function(event) {
+      event.preventDefault();
+      var deleteButton = $(this);
+      var postId = deleteButton.closest(".item").find(".postId").val();
+      var commentId = deleteButton.data("comment-id");
+
+
+      Swal.fire({
+        title: 'Xác nhận',
+        text: 'Bạn có chắc chắn muốn xóa bình luận?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#3085d6',
+        cancelButtonColor: '#d33',
+        confirmButtonText: 'Xóa',
+        cancelButtonText: 'Hủy'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          deleteComment(postId, commentId, deleteButton);
+        }
+      });
+    });
+
+    function deleteComment(postId, commentId, deleteButton) {
+      $.ajax({
+        url: "/home/deletecomment/" + postId + "/" + commentId,
+        method: "GET",
+        success: function(response) {
+          console.log(response);
+
+
+
+          // Cập nhật số lượng bình luận trên giao diện
+          var commentCountElement = deleteButton.closest(".item").find(".comment-count");
+          commentCountElement.text(response);
+          // Xóa phần tử giao diện của bình luận
+          deleteButton.closest(".we-comment").parent().remove();
+        },
+        error: function(error) {
+          console.error("Error deleting comment: ", error);
+        }
+      });
+    }
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+    $(".commentText").keydown(function(event) {
+      if (event.keyCode === 13) {  // Kiểm tra nếu là phím Enter
+        event.preventDefault();  // Ngăn sự kiện mặc định của phím Enter
+        var commentText = $(this).val();
+        var postId = $(this).closest(".item").find(".postId").val();
+        var enteredText = commentText.trim();
+
+        if (enteredText === "") {
+          Swal.fire({
+            icon: 'warning',
+            title: 'Lỗi',
+            text: 'Bạn chưa nhập nội dung!',
+            confirmButtonText: 'Đóng'
+          });
+        } else {
+        // Thực hiện thêm bình luận
+        addComment(postId, commentText, $(this));
+      }}
+    });
+
+    function addComment(postId, commentText, addButton) {
+      // Thực hiện AJAX request để thêm bình luận
+      $.ajax({
+        url: "http://localhost:8080/home/addcomment",
+        method: "POST",
+        data: {
+          postId: postId,
+          commentText: commentText
+        },
+        success: function(data) {
+          // Xử lý thành công: thêm bình luận vào danh sách
+          var newComment = data;
+          var newCommentElement = `
+          <li class="comment-item" data-comment-id="${newComment.id}">
+            <div class="comet-avatar">
+                <img src="${newComment.userAvatar}" alt="" />
+              </div>
+              <div class="we-comment">
+                <h5>
+                  <a>${newComment.userName}</a>
+                </h5>
+                <p>${newComment.content}</p>
+                <div class="inline-itms">
+                  <span>${newComment.createdDate}</span>
+                  <a class="we-reply" href="#" title="Reply"><i class="fa fa-reply"></i></a>
+                  <a class="cmt" title="Liked"  data-comment-id="${newComment.id}"
+                    style="display: inline-block; cursor: pointer; margin-right: 10px; text-decoration: none;"
+                  >❤</a>
+                  <span id="scmtlike">0</span>
+                  <a  title="Edit" class="edit-comment" data-comment-id="${newComment.id}">
+                    <i class="fa fa-pencil"></i>
+                  </a>
+                  <a class="delete-comment" data-comment-id="${newComment.id}">
+                    <i class="fa fa-trash"></i>
+                  </a>
+                  <div class="edit-comment-form" style="display: none;">
+                                    <textarea class="edit-comment-text">${newComment.content}</textarea>
+                                    <p class="save-edit-button" data-comment-id="${newComment.id}"></p>
+                                    <p type="button" class="cancel-edit-button">
+                                    </p>
+
+                                  </div>
+                </div>
+              </div>
+          </li>
+        `;
+
+          // Thêm bình luận mới vào danh sách bình luận của bài viết
+          addButton.closest(".coment-area").find(".commentList").append(newCommentElement);
+          addButton.closest(".item").find(".comment-count").text(newComment.total_cmt);
+
+          // Xóa nội dung bình luận sau khi thêm thành công
+          addButton.closest(".post-comment").find(".commentText").val("");
+        },
+        error: function(error) {
+          console.error("Error adding comment: ", error);
+        }
+      });
+    }
+  });
+</script>
+
+
+
+
+
+<script>
+  $(document).ready(function() {
+    $(".commentList").on("click", ".edit-comment", function() {
+      var commentElement = $(this).closest(".comment-item");
+      var commentId = commentElement.data("comment-id");
+      var commentTextElement = commentElement.find(".we-comment p");
+      var editForm = commentElement.find(".edit-comment-form");
+      var editTextarea = editForm.find(".edit-comment-text");
+      var postCommentForm = $(".coment-area .post-comment");
+      console.log(commentId);
+
+
+      $.ajax({
+        url: "http://localhost:8080/home/getcomment/" + commentId,
+        method: "GET",
+        success: function(comment) {
+          editTextarea.val(comment.content);
+          editForm.show();
+          commentTextElement.hide();
+          postCommentForm.hide();
+        },
+        error: function(error) {
+          console.error("Error getting comment: ", error);
+        }
+      });
+    });
+
+    // Save edited comment on button click
+    $(".commentList").on("click", ".save-edit-button", function() {
+      var commentElement = $(this).closest(".comment-item");
+      var editForm = commentElement.find(".edit-comment-form");
+      var commentTextElement = commentElement.find(".we-comment p");
+      var editedContent = editForm.find(".edit-comment-text").val();
+      var commentId = $(this).data("comment-id");
+      commentTextElement.attr("data-comment-id", commentId);
+
+      var postCommentForm = $(".coment-area .post-comment");
+      var enteredText = editedContent.trim();
+
+      if (enteredText === "") {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Lỗi',
+          text: 'Bạn chưa nhập nội dung bình luận!',
+          confirmButtonText: 'Đóng'
+        });
+      } else {
+// ======
+      // Send edit request to the server
+      $.ajax({
+        url: "http://localhost:8080/home/editcomment",
+        method: "POST",
+        data: {
+          commentId: commentId,
+          editedContent: editedContent
+        },
+        success: function(editedContent) {
+          console.log(editedContent)
+          postCommentForm.show();
+          commentTextElement.html(editedContent);
+          commentTextElement.fadeIn();
+
+
+          editForm.hide();
+
+
+        },
+        error: function(error) {
+          console.error("Error editing comment: ", error);
+        }
+
+      });
+      // ======
+      }
+    });
+
+    // Cancel comment edit on button click
+    $(".commentList").on("click", ".cancel-edit-button", function() {
+      var commentElement = $(this).closest(".comment-item");
+      var editForm = commentElement.find(".edit-comment-form");
+      var commentTextElement = commentElement.find(".we-comment p");
+      var postCommentForm = $(".coment-area .post-comment");
+      postCommentForm.show();
+      commentTextElement.show();
+      editForm.hide();
+
+    });
+
+    // Automatically submit edited comment on Enter key press
+    $(".commentList").on("keydown", ".edit-comment-text", function(event) {
+      if (event.keyCode === 13 && !event.shiftKey) {
+        event.preventDefault();
+        $(this).closest(".comment-item").find(".save-edit-button").click();
+      }
+    });
+  });
+</script>
+
+<script>
+  $(document).ready(function() {
+    var postCommentForm = $(".coment-area .post-comment");
+
+    // Attach click event to the comment icon
+    $(".comment").on("click", function() {
+      postCommentForm.show();
+    });
+  });
+</script>
+
+
+<!--=========================================-->
+<div class="theme-layout">
+  <div class="postoverlay" ></div>
+<!--nav-->
+  <th:block th:insert="layout/nav.html" ></th:block>
+<!--nav-->
+  <div class="fixed-sidebar right">
+    <div class="chat-friendz">
+      <ul class="chat-users">
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend1.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend2.jpg}" alt="" />
+            <span class="status f-away"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend3.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+        <li>
+          <div  class="author-thmb">
+            <img th:src="@{images/resources/side-friend4.jpg}" alt="" />
+            <span class="status f-offline"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend5.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend6.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend7.jpg}" alt="" />
+            <span class="status f-offline"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend8.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend9.jpg}" alt="" />
+            <span class="status f-away"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend10.jpg}" alt="" />
+            <span class="status f-away"></span>
+          </div>
+        </li>
+        <li>
+          <div class="author-thmb">
+            <img th:src="@{images/resources/side-friend8.jpg}" alt="" />
+            <span class="status f-online"></span>
+          </div>
+        </li>
+      </ul>
+      <div class="chat-box">
+        <div class="chat-head">
+          <span class="status f-online"></span>
+          <h6>Bucky Barnes</h6>
+          <div class="more">
+            <div class="more-optns">
+              <i class="ti-more-alt"></i>
+              <ul>
+                <li>block chat</li>
+                <li>unblock chat</li>
+                <li>conversation</li>
+              </ul>
+            </div>
+            <span class="close-mesage"><i class="ti-close"></i></span>
+          </div>
+        </div>
+        <div class="chat-list">
+          <ul>
+            <li class="me">
+              <div class="chat-thumb">
+                <img th:src="@{images/resources/chatlist1.jpg}" alt="" />
+              </div>
+              <div class="notification-event">
+                    <span class="chat-message-item">
+                      HI, Jack i have faced a problem with your software. are
+                      you available now, when i install this i have to received
+                      an error.
+                    </span>
+                <span class="notification-date"
+                ><time
+                        datetime="2004-07-24T18:18"
+                        class="entry-date updated"
+                >Today at 2:12pm</time
+                ></span
+                >
+              </div>
+            </li>
+            <li class="you">
+              <div class="chat-thumb">
+                <img th:src="@{images/resources/chatlist2.jpg}" alt="" />
+              </div>
+              <div class="notification-event">
+                    <span class="chat-message-item">
+                      Hi tina, Please let me know your purchase code, and show
+                      me the screnshot of error.
+                    </span>
+                <span class="notification-date"
+                ><time
+                        datetime="2004-07-24T18:18"
+                        class="entry-date updated"
+                >Today at 2:14pm</time
+                ></span
+                >
+              </div>
+            </li>
+            <li class="me">
+              <div class="chat-thumb">
+                <img th:src="@{images/resources/chatlist1.jpg}" alt="" />
+              </div>
+              <div class="notification-event">
+                    <span class="chat-message-item">
+                      Yes, sure please wait a while, i ll show you the complete
+                      error list. Thank you.
+                    </span>
+                <span class="notification-date"
+                ><time
+                        datetime="2004-07-24T18:18"
+                        class="entry-date updated"
+                >Today at 2:15pm</time
+                ></span
+                >
+              </div>
+            </li>
+          </ul>
+          <form class="text-box">
+            <textarea  placeholder="Post enter to post..."></textarea>
+
+            <button type="submit"></button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- right sidebar user chat -->
+
+  <div class="fixed-sidebar left">
+    <div class="menu-left">
+      <ul class="left-menu">
+        <li>
+          <a class="menu-small"  title="">
+            <i class="ti-menu"></i>
+          </a>
+        </li>
+
+        <li>
+          <a
+                  href="/"
+                  title="Newsfeed Page"
+                  data-toggle="tooltip"
+                  data-placement="right"
+          >
+            <i class="ti-magnet"></i>
+          </a>
+        </li>
+
+        <li>
+          <a th:href="@{/timeline}"
+
+                  data-toggle="tooltip"
+                  data-placement="right"
+          >
+            <i class="ti-user"></i>
+          </a>
+        </li>
+
+        <li>
+          <a
+                  href="chat-messenger.html"
+                  title="Messages"
+                  data-toggle="tooltip"
+                  data-placement="right"
+          >
+            <i class="ti-comment-alt"></i>
+          </a>
+        </li>
+      </ul>
+    </div>
+    <div class="left-menu-full">
+      <ul class="menu-slide">
+        <li>
+          <a class="closd-f-menu" href="#" title=""
+          ><i class="ti-close"></i> close Menu</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-home"></i> Home Pages</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-film"></i> Pittube</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-female"></i>PitPoint</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-graduation-cap"></i>Pitjob</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-repeat"></i>Timeline</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-heart"></i>Favourit Page</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-forumbee"></i>Forum</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a class="" href="#" title=""
+          ><i class="fa fa-star-o"></i>Featured</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a
+          ><i class="fa fa-gears"></i>Account Setting</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a
+          ><i class="fa fa-lock"></i>Authentication</a
+          >
+        </li>
+        <li class="menu-item-has-children">
+          <a
+          ><i class="fa fa-wrench"></i>Tools</a
+          >
+        </li>
+      </ul>
+    </div>
+  </div>
+  <!-- left sidebar menu -->
+
+  <section>
+    <div class="gap2 gray-bg">
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-12">
+            <div class="row merged20" id="page-contents">
+              <div class="col-lg-3">
+                <aside class="sidebar static left">
+                  <!-- weather widget-->
+
+                  <div class="advertisment-box">
+                    <h4 class="">advertisment</h4>
+                    <figure>
+                      <a
+                      ><img th:src="@{images/resources/ad-widget.gif}" alt=""
+                      /></a>
+                    </figure>
+                  </div>
+                  <!-- advertisment box -->
+
+                  <div class="widget">
+                    <h4 class="widget-title">Who's follownig</h4>
+                    <ul class="followers">
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar2.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Kelly Bill</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar4.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Issabel</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar6.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Andrew</a>
+                          </h4>
+                          <a class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar8.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Sophia</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar3.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Allen</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <!-- who's following -->
+                  <div class="widget stick-widget">
+                    <div class="weather-widget low-opacity bluesh">
+                      <div
+                              class="bg-image"
+                              th:style="'background-image:url(' +|@{images/resources/weather.jpg}| + ')'"
+
+                      ></div>
+                      <span class="refresh-content"
+                      ><i class="fa fa-refresh"></i
+                      ></span>
+                      <div class="weather-week">
+                        <div class="icon sun-shower">
+                          <div class="cloud"></div>
+                          <div class="sun">
+                            <div class="rays"></div>
+                          </div>
+                          <div class="rain"></div>
+                        </div>
+                      </div>
+                      <div class="weather-infos">
+                        <span class="weather-tem">25</span>
+                        <h3>Cloudy Skyes<i>Sicklervilte, New Jersey</i></h3>
+                        <div class="weather-date skyblue-bg">
+                          <span>MAY<strong>21</strong></span>
+                        </div>
+                      </div>
+                      <div class="monthly-weather">
+                        <ul>
+                          <li>
+                            <span>Sun</span>
+                            <a
+                            ><i class="wi wi-day-sunny"></i
+                            ></a>
+                            <em>40°</em>
+                          </li>
+                          <li>
+                            <span>Mon</span>
+                            <a
+                            ><i class="wi wi-day-cloudy"></i
+                            ></a>
+                            <em>10°</em>
+                          </li>
+                          <li>
+                            <span>Tue</span>
+                            <a
+                            ><i class="wi wi-day-hail"></i
+                            ></a>
+                            <em>20°</em>
+                          </li>
+                          <li>
+                            <span>Wed</span>
+                            <a
+                            ><i class="wi wi-day-lightning"></i
+                            ></a>
+                            <em>34°</em>
+                          </li>
+                          <li>
+                            <span>Thu</span>
+                            <a
+                            ><i class="wi wi-day-showers"></i
+                            ></a>
+                            <em>22°</em>
+                          </li>
+                          <li>
+                            <span>Fri</span>
+                            <a
+                            ><i class="wi wi-day-windy"></i
+                            ></a>
+                            <em>26°</em>
+                          </li>
+                          <li>
+                            <span>Sat</span>
+                            <a
+                            ><i class="wi wi-day-sunny-overcast"></i
+                            ></a>
+                            <em>30°</em>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    <!-- Weather Widget -->
+                  </div>
+                </aside>
+              </div>
+              <!-- sidebar -->
+              <div class="col-lg-6">
+                <div class="central-meta postbox">
+                  <span class="create-post">Create post</span>
+                  <form th:action="@{/home/add}" class="new-postbox" method="post" enctype="multipart/form-data" th:object="${post}">
+                    <figure>
+                      <img style="
+    width: 35px;
+    height: 35px;
+" th:src="@{'/fileupload/'+${session.loggedInUser.getAvatar()}}" alt="" />
+                    </figure>
+                    <div class="newpst-input">
+
+                            <textarea
+                                    rows="2"
+                                    placeholder="Share some what you are thinking?"
+                                    th:field="*{content}" required ></textarea>
+
+                    </div>
+                    <div><img id="outputBase64" src=""></div>
+                    <div class="attachments">
+                      <ul>
+                        <li>
+                              <span class="add-loc">
+                                <i class="fa fa-map-marker"></i>
+                              </span>
+                        </li>
+                        <li>
+                          <i class="fa fa-music"></i>
+                          <label class="fileContainer">
+                            <input type="file" />
+                          </label>
+                        </li>
+                        <li>
+                          <i class="fa fa-image"></i>
+                          <i class="fileContainer">
+                            <input id="fileInput" type="file" th:field="*{imgUrl}"  />
+                          </i>
+                        </li>
+                        <li>
+                          <i class="fa fa-video-camera"></i>
+                          <i class="fileContainer">
+                            <input type="file" />
+                          </i>
+                        </li>
+                        <li>
+                          <i class="fa fa-camera"></i>
+                          <label class="fileContainer">
+                            <input type="file" />
+                          </label>
+                        </li>
+                        <li class="preview-btn">
+                          <button
+                                  class="post-btn-preview"
+
+                                  data-ripple=""
+                          >
+                            Preview
+                          </button>
+                        </li>
+                      </ul>
+                      <button class="post-btn" type="submit" data-ripple="">
+                        Post
+                      </button>
+                    </div>
+
+                  </form>
+                </div>
+                <!-- add post new box -->
+                <div class="central-meta">
+                      <span class="create-post"
+                      >Recent Stories <a >See All</a></span
+                      >
+                  <div class="story-postbox">
+                    <div class="row">
+                      <div class="col-lg-3 col-md-3 col-sm-3">
+                        <div class="story-box">
+                          <figure>
+                            <img
+                                    th:src="@{images/resources/story-1.jpg}"
+                                    alt=""
+                            />
+                            <span>Add Your Story</span>
+                          </figure>
+                          <div
+                                  class="story-thumb"
+                                  data-toggle="tooltip"
+                                  title="Add Your Story"
+                          >
+                            <i class="fa fa-plus"></i>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-lg-3 col-md-3 col-sm-3">
+                        <div class="story-box">
+                          <figure>
+                            <img
+                                    th:src="@{images/resources/story-2.jpg}"
+                                    alt=""
+                            />
+                            <span>Adam James</span>
+                          </figure>
+                          <div
+                                  class="story-thumb"
+                                  data-toggle="tooltip"
+                                  title="Adam James"
+                          >
+                            <img
+                                    th:src="@{images/resources/thumb-2.jpg}"
+                                    alt=""
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-lg-3 col-md-3 col-sm-3">
+                        <div class="story-box">
+                          <figure>
+                            <img
+                                    th:src="@{images/resources/story-3.jpg}"
+                                    alt=""
+                            />
+                            <span>Emily grey</span>
+                          </figure>
+                          <div
+                                  class="story-thumb"
+                                  data-toggle="tooltip"
+                                  title="Emily grey"
+                          >
+                            <img
+                                    th:src="@{images/resources/thumb-3.jpg}"
+                                    alt=""
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div class="col-lg-3 col-md-3 col-sm-3">
+                        <div class="story-box">
+                          <figure>
+                            <img
+                                    th:src="@{images/resources/story-4.jpg}"
+                                    alt=""
+                            />
+                            <span>Jhon Deo</span>
+                          </figure>
+                          <div
+                                  class="story-thumb"
+                                  data-toggle="tooltip"
+                                  title="Jhon Deo"
+                          >
+                            <img
+                                    th:src="@{images/resources/thumb-4.jpg}"
+                                    alt=""
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+                <!-- top stories -->
+                <div class="loadMore" >
+                  <div class="central-meta item" th:each="post : ${posts}">
+                    <div class="user-post" >
+                      <div class="friend-info">
+                        <figure>
+                          <img style="
+    width: 35px;
+    height: 35px;
+" th:src="@{'/fileupload/'+${post.getUserAvatar()}}" alt="" />
+                        </figure>
+                        <div class="friend-name">
+                          <div class="more">
+                            <div class="more-post-optns">
+
+                              <i class="ti-more-alt" ></i>
+                              <ul  th:if="${post.getUsepostId() == session.loggedInUser.getId()}">
+                                <li  class="share-pst">
+    <span  >
+   <i class="fa fa-pencil-square-o edit-icon" th:data-post-id="${post.getPostId()}">edit</i>
+    </span>
+                                </li>
+
+                                <li th:onclick="'confirmDelete(' + ${post.getPostId()} + ');'">
+                                  <i  class="fa fa-trash-o"></i>Delete Post
+
+                                </li>
+
+
+                              </ul>
+
+
+                            </div>
+                          </div>
+                          <ins
+                                   >
+                            <a th:href="@{/friends/friends/{userId}(userId=${post.getUsepostId()})}" th:text="${post.getUserName()}"></a>
+
+
+
+
+                          </ins
+                          >
+                          <span
+                          ><i class="fa fa-globe"></i> published:
+                              <span th:text="${#dates.format(post.createdDate, 'dd-MM-yyyy HH:mm')}"></span>
+                              </span>
+                        </div>
+                        <div class="post-meta">
+                          <a data-toggle="modal"
+                             th:data-target="${post.getPostId()}">
+                          </a>
+                          <figure>
+                            <div class="img-bunch">
+                              <div class="row">
+                                <div class="col-lg-12 col-md-12 col-sm-12">
+                                  <figure >
+                                    <!-- Bên trong mẫu bài viết của bạn -->
+                                    <p class="post-content" th:data-post-id="${post.getPostId()}" th:text="${post.getPostContent()}" ></p>
+
+                                    <a
+                                       >
+                                      <img
+                                              data-toggle="modal"
+                                              th:data-target="'#img-comt' + ${post.getPostId()}"
+                                              th:src="@{'/fileupload/'+${post.getPostImageUrl()}}"
+                                              alt=""
+                                      />
+                                    </a>
+                                  </figure>
+
+                                </div>
+
+                              </div>
+                            </div>
+                          </figure>
+                          <div class="we-video-info">
+                            <ul>
+                              <li>
+                                    <span class="views" title="views">
+                                      <i class="fa fa-eye"></i>
+                                      <ins>1.2k</ins>
+                                    </span>
+                              </li >
+
+                              <li th:if="${#sets.contains(session.loggedInUser.getListidpostlike(),post.getPostId())}"
+                              >
+                                <div class="postlikepost likes heart happy" th:id="${post.getPostId()}" th:data-postlike-id="${post.getPostId()}">
+                                  ❤<span class="totallike" th:text="${post.getTotalLikes()}"></span>
+                                </div>
+                              </li>
+                              <li th:unless="${#sets.contains(session.loggedInUser.getListidpostlike(),post.getPostId())}"
+                              >
+                                <div class="postlikepost likes heart" th:id="${post.getPostId()}" th:data-postlike-id="${post.getPostId()}">
+                                  ❤<span class="totallike" th:text="${post.getTotalLikes()}"></span>
+                                </div>
+                              </li>
+
+
+                              <li>
+                              <span class="comment" title="Comments">
+                                      <i class="fa fa-commenting"></i>
+                                      <ins class="comment-count" th:text="${post.getTotalComments()}"></ins>
+                                    </span>
+                              </li>
+
+                              <li>
+                                    <span>
+                                      <a  title="Share">
+                                        <i class="fa fa-share-alt"></i>
+                                      </a>
+                                      <ins></ins>
+                                    </span>
+                              </li>
+                            </ul>
+                          </div>
+                        </div>
+                        <div class="coment-area" style="display: block;" >
+                          <ul class="we-comet commentList">
+                            <li th:each="comment : ${post.getCommentbyidpostList()}" th:data-comment-id="${comment.getId()}" class="comment-item">
+                              <div class="comet-avatar">
+                                <img style="
+    height: 30px;
+    width: 30px;
+" th:src="@{'/fileupload/'+${comment.getUserAvatar()}}" alt="" />
+                              </div>
+                              <div class="we-comment">
+                                <h5>
+                                  <a th:href="@{/timeline}" title="" th:text="${comment.getUserName()}"></a>
+                                </h5>
+                                <p th:text="${comment.getContent()}"></p>
+                                <div class="inline-itms">
+                                  <span th:text="${#dates.format(comment.getCreatedDate(), 'dd-MM-yyyy HH:mm')}"></span>
+                                  <a class="we-reply"  title="Reply"><i class="fa fa-reply"></i></a>
+
+                                  <!-- Nút thích bình luận -->
+                                  <a th:if="${#sets.contains(session.loggedInUser.getListidcommentlike(), comment.getId())}"
+                                     class="cmt activiti"
+                                     title="Liked"
+                                     th:data-comment-id="${comment.getId()}"
+                                     style="display: inline-block; cursor: pointer; margin-right: 10px; color: rgb(255, 0, 0); text-decoration: none;"
+                                  >❤</a>
+
+                                  <a th:unless="${#sets.contains(session.loggedInUser.getListidcommentlike(), comment.getId())}"
+                                     class="cmt"
+                                     title="Like"
+                                     th:id="${comment.getId()}"
+                                     th:data-comment-id="${comment.getId()}"
+                                     style="display: inline-block; cursor: pointer; margin-right: 10px; color: rgb(173, 173, 253); text-decoration: none;"
+                                  >❤
+                                  </a>
+
+                                  <span id="scmtlike" th:text="${comment.getTotal_likes()}"></span>
+
+                                  <a th:if="${comment.getUserId() == session.loggedInUser.getId()}" title="Edit" class="edit-comment" th:data-comment-id="${comment.getId()}">
+                                    <i class="fa fa-pencil" ></i>
+                                  </a>
+
+                                  <!-- Nút xóa bình luận -->
+                                  <a class="delete-comment" th:data-comment-id="${comment.getId()}" th:if="${comment.getUserId() == session.loggedInUser.getId()}" >
+                                    <i class="fa fa-trash"></i>
+                                  </a>
+                                  <div class="edit-comment-form" style="display: none;">
+                                    <textarea class="edit-comment-text">${comment.getContent()}</textarea>
+                                    <p class="save-edit-button" th:data-comment-id="${comment.getId()}"></p>
+                                    <p type="button" class="cancel-edit-button">
+                                    </p>
+
+                                  </div>
+                                </div>
+                              </div>
+
+                            </li>
+                          </ul>
+
+
+
+
+                          <div class="post-comment">
+                            <div class="comet-avatar">
+                              <img  style="
+    width: 35px;
+    height: 35px;
+"
+                                    th:src="@{'/fileupload/'+${session.loggedInUser.getAvatar()}}"
+                                      alt=""
+                              />
+                            </div>
+                            <div class="post-comt-box" >
+                              <div class="post-comment">
+                                <input type="hidden" class="postId" name="postId" th:value="${post.getPostId()}">
+                                <textarea class="commentText" placeholder="Post your comment"></textarea>
+                                <p class="addCommentButton"></p>
+                              </div>
+
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+<!--                ===========model post chi tiết=========-->
+
+
+
+<!--                ===========model post chi tiết=========-->
+                  </div>
+                </div>
+
+              </div>
+              <!-- centerl meta -->
+              <div class="col-lg-3">
+                <aside class="sidebar static left">
+                  <!-- birthday widget -->
+
+                  <div class="advertisment-box">
+                    <h4 class="">advertisment</h4>
+                    <figure>
+                      <a
+                      ><img th:src="@{images/resources/ad-widget.gif}" alt=""
+                      /></a>
+                    </figure>
+                  </div>
+                  <!-- advertisment box -->
+
+                  <div class="widget">
+                    <h4 class="widget-title">Who's follownig</h4>
+                    <ul class="followers">
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar2.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Kelly Bill</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar4.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Issabel</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar6.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Andrew</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar8.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Sophia</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                      <li>
+                        <figure>
+                          <img
+                                  th:src="@{images/resources/friend-avatar3.jpg}"
+                                  alt=""
+                          />
+                        </figure>
+                        <div class="friend-meta">
+                          <h4>
+                            <a href="time-line.html" title="">Allen</a>
+                          </h4>
+                          <a  class="underline"
+                          >Add Friend</a
+                          >
+                        </div>
+                      </li>
+                    </ul>
+                  </div>
+                  <!-- who's following -->
+                  <div class="widget stick-widget whitish low-opacity">
+                    <div
+                            th:style="'background-image:url(' +|@{images/resources/dob2.png}| + ')'"
+                            class="bg-image"
+                    ></div>
+                    <div class="dob-head">
+                      <img th:src="@{images/resources/sug-page-5.jpg}" alt="" />
+                      <span>22nd Birthday</span>
+                      <div class="dob">
+                        <i>19</i>
+                        <span>September</span>
+                      </div>
+                    </div>
+                    <div class="dob-meta">
+                      <figure>
+                        <img th:src="@{images/resources/dob-cake.gif}" alt="" />
+                      </figure>
+                      <h6>
+                        <a  title="">Lucy Carbel</a> valentine's
+                        birthday
+                      </h6>
+                      <p>
+                        leave a message with your best wishes on his
+                        profile.
+                      </p>
+                    </div>
+                  </div>
+                </aside>
+              </div>
+              <!-- sidebar -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<!-- side panel -->
+
+<div class="popup-wraper2">
+  <div class="popup post-sharing">
+    <span class="popup-closed"><i class="ti-close"></i></span>
+    <div class="popup-meta">
+      <div class="popup-head">
+      </div>
+      <div class="postbox">
+        <div class="post-comt-box">
+          <div class="central-meta postbox">
+            <span class="create-post">Edit post</span>
+            <div class="new-postbox">
+              <figure>
+                <img style="
+    width: 35px;
+    height: 35px;
+" th:src="@{'/fileupload/'+${session.loggedInUser.getAvatar()}}" alt="">
+              </figure>
+              <div class="newpst-input">
+                <form method="post" >
+                  <textarea id="postContent" rows="2"></textarea>
+                  <button id="updateButton" class="post-btn" type="button" data-ripple="">Update</button>
+                </form>
+              </div>
+              <div class="attachments">
+                <!-- ... -->
+<!--                <button class="post-btn" type="submit" data-ripple="" style="background: #e34f2c;">cancel</button>-->
+              </div>
+              <div class="add-location-post">
+                <!-- ... -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+
+    </div>
+    </div>
+  </div>
+</div>
+<!-- share popup -->
+
+<div class="popup-wraper3">
+  <div class="popup">
+    <span class="popup-closed"><i class="ti-close"></i></span>
+    <div class="popup-meta">
+      <div class="popup-head">
+        <h5>Report Post</h5>
+      </div>
+      <div class="Rpt-meta">
+        <span>We're sorry something's wrong. How can we help?</span>
+        <form method="post" class="c-form">
+          <div class="form-radio">
+            <div class="radio">
+              <label>
+                <input type="radio" name="radio" checked="checked" /><i
+                      class="check-box"
+              ></i
+              >It's spam or abuse
+              </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" name="radio" /><i class="check-box"></i
+              >It breaks r/technology's rules
+              </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" name="radio" /><i class="check-box"></i
+              >Not Related
+              </label>
+            </div>
+            <div class="radio">
+              <label>
+                <input type="radio" name="radio" /><i class="check-box"></i
+              >Other issues
+              </label>
+            </div>
+          </div>
+          <div>
+            <label>Write about Report</label>
+            <textarea
+                    placeholder="write someting about Post"
+                    rows="2"
+            ></textarea>
+          </div>
+          <div>
+            <button data-ripple="" type="submit" class="main-btn">
+              Submit
+            </button>
+            <a data-ripple="" class="main-btn3 cancel">Close</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- report popup -->
+
+<div class="popup-wraper1">
+  <div class="popup direct-mesg">
+    <span class="popup-closed"><i class="ti-close"></i></span>
+    <div class="popup-meta">
+      <div class="popup-head">
+        <h5>Send Message</h5>
+      </div>
+      <div class="send-message">
+        <form method="post" class="c-form">
+          <input type="text" placeholder="Sophia" />
+          <textarea placeholder="Write Message"></textarea>
+          <button type="submit" class="main-btn">Send</button>
+        </form>
+        <div class="add-smiles">
+          <div class="uploadimage">
+            <i class="fa fa-image"></i>
+            <label class="fileContainer">
+              <input type="file" />
+            </label>
+          </div>
+          <span title="add icon" class="em em-expressionless"></span>
+          <div class="smiles-bunch">
+            <i class="em em---1"></i>
+            <i class="em em-smiley"></i>
+            <i class="em em-anguished"></i>
+            <i class="em em-laughing"></i>
+            <i class="em em-angry"></i>
+            <i class="em em-astonished"></i>
+            <i class="em em-blush"></i>
+            <i class="em em-disappointed"></i>
+            <i class="em em-worried"></i>
+            <i class="em em-kissing_heart"></i>
+            <i class="em em-rage"></i>
+            <i class="em em-stuck_out_tongue" ></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- send message popup -->
+
+
+<!-- The Scrolling Modal image with comment -->
+
+
+
+
+
+
+<!--==========================================-->
+<!--thông báo hỏi xóa-->
+<script th:inline="javascript">
+  function confirmDelete(postId) {
+    Swal.fire({
+      title: "Are you sure?",
+      text: "Once deleted, you will not be able to recover this post!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Delete",
+      cancelButtonText: "Cancel"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        // Người dùng đồng ý xóa
+        window.location.href = "/home/delete?postid=" + postId;
+      } else {
+        // Người dùng hủy bỏ
+      }
+    });
+  }
+</script>
+<!--=============================-->
+<!--=====================-->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+  $(document).ready(function() {
+    $('.edit-button').click(function() {
+      // Lấy id của bài viết từ thuộc tính data
+      var postId = $(this).data('post-id');
+
+      // Hiển thị form edit tương ứng sau phần tử <p> có chứa nội dung bài viết
+      $('p[data-post-id="' + postId + '"]').next('#edit-post-form').show();
+    });
+  });
+</script>
+<script>document.getElementById('fileInput').addEventListener('change', function (event) {
+  const file = event.target.files[0];
+  const reader = new FileReader();
+
+  reader.onloadend = function () {
+    const base64 = reader.result;
+    document.getElementById('outputBase64').setAttribute("src", base64);
+  };
+
+  reader.readAsDataURL(file);
+});
+</script>
+<!--=================================================================-->
+
+<!--================================-->
+<script th:src="@{js/main.min.js}"></script>
+<script th:src="@{js/jquery-stories.js}"></script>
+<script th:src="@{js/toast-notificatons.js}"></script>
+<script th:src="@{../../../cdnjs.cloudflare.com/ajax/libs/gsap/1.18.2/TweenMax.min.js}"></script>
+<!-- For timeline slide show -->
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyA8c55_YHLvDHGACkQscgbGLtLRdxBDCfI"></script>
+<!-- for location picker map -->
+<script th:src="@{js/locationpicker.jquery.js}"></script>
+<!-- for loaction picker map -->
+<script th:src="@{js/map-init.js}"></script>
+<!-- map initilasition -->
+<script th:src="@{js/page-tourintro.js}"></script>
+<script th:src="@{js/page-tour-init.js}"></script>
+<script th:src="@{js/script.js}"></script>
+
+</body>
+</html>

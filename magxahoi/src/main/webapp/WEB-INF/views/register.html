@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="" />
+    <meta name="keywords" content="" />
+	<title>Pitnik Social Network Toolkit</title>
+    <link rel="icon" th:href="@{/images/fav.png}" type="image/png" sizes="16x16">
+    
+    <link rel="stylesheet" th:href="@{/css/main.min.css}">
+	<link rel="stylesheet" th:href="@{/css/weather-icon.css}">
+	<link rel="stylesheet" th:href="@{/css/weather-icons.min.css}">
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/color.css}">
+    <link rel="stylesheet" th:href="@{/css/responsive.css}">
+    <script src="https://unpkg.com/sweetalert/dist/sweetalert.min.js"></script>
+</head>
+<body>
+	<div class="www-layout">
+        <section>
+        	<div class="gap no-gap signin whitish medium-opacity register">
+                <div class="bg-image" th:style="'background-image:url(' +|@{/images/resources/theme-bg.jpg}| + ')'"></div>
+                <div class="container">
+                	<div class="row">
+                        <div class="col-lg-8">
+                            <div class="big-ad">
+                                <figure><img th:src="@{/images/logo2.png}" alt=""></figure>
+                                <h1>Welcome to the Pitnik</h1>
+                                <p>
+                                     Pitnik is a social network template that can be used to connect people. use this template for multipurpose social activities like job, dating, posting, bloging and much more. Now join & Make Cool Friends around the world !!!                             
+                                </p>
+                                <div class="barcode">
+                                    <figure><img th:src="@{/images/resources/Barcode.jpg}" alt=""></figure>
+                                    <div class="app-download">
+                                        <span>Download Mobile App and Scan QR Code to login</span>
+                                        <ul class="colla-apps">
+                                            <li><a title="" href="https://play.google.com/store?hl=en"><img th:src="@{/images/android.png}" alt="">android</a></li>
+                                            <li><a title="" href="https://www.apple.com/lae/ios/app-store/"><img th:src="@{/images/apple.png}" alt="">iPhone</a></li>
+                                            <li><a title="" href="https://www.microsoft.com/store/apps"><img th:src="@{/images/windows.png}" alt="">Windows</a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="we-login-register">
+                                <div class="form-title">
+                                    <i class="fa fa-key"></i>Sign Up
+                                    <span>Sign Up now and meet the awesome friends around the world.</span>
+                                </div>
+                                <form class="we-form" th:action="@{/register/add}" method="post"  th:object="${user}" >
+                                    <input type="email" th:field="*{email}" placeholder="Email">
+                                    <input type="text" th:field="*{name}" placeholder="Name">
+                                    <input type="password" th:field="*{password}" placeholder="Password">
+                                    <input type="text" th:field="*{phone}" placeholder="+1234-567-987">
+                                    <button type="submit" data-ripple="">Register</button>
+                                    <a class="forgot underline" href="#" title="">forgot password?</a>
+                                </form>
+                                <a data-ripple="" title="" href="#" class="with-smedia facebook"><i class="fa fa-facebook"></i></a>
+                                <a data-ripple="" title="" href="#" class="with-smedia twitter"><i class="fa fa-twitter"></i></a>
+								<a data-ripple="" title="" href="#" class="with-smedia instagram"><i class="fa fa-instagram"></i></a>
+								<a data-ripple="" title="" href="#" class="with-smedia google"><i class="fa fa-google-plus"></i></a>
+                                <span>already have an account? <a class="we-account underline" th:href="@{/}" title="">Sign in</a></span>
+                            </div>
+                        </div>
+                        
+                    </div>
+                </div>
+            </div>
+        </section>
+         
+    </div>
+    
+    	<script src="js/main.min.js"></script>
+		<script src="js/script.js"></script>
+    <script th:inline="javascript">
+        var thongbao = /*[[${thongbao}]]*/ "";
+console.log(thongbao)
+
+        /* Display SecurityCheckLogin SweetAlert based on the response */
+        switch (thongbao) {
+            case "emailerr":
+                swal("Lỗi", "Email không hợp lệ", "error");
+                break;
+            case "usernameerr":
+                swal("Lỗi", "Tên tài khoản quá ngắn, ", "error");
+                break;
+            case "passerr":
+                swal("Lỗi", "Mật khẩu quá ngắn", "error");
+                break;
+            case "phoneerr":
+                swal("Lỗi", "Số điện thoại không hợp lệ", "error");
+                break;
+            case "allerr":
+                swal("Lỗi", "Tất cả thông tin không hợp lệ", "error");
+                break;
+            case "thatbai":
+                swal("Lỗi", "Tài khản gmail đã được đăng kí", "error");
+                break;
+            case "thanhcong":
+                swal("Thành công", "Đăng ký thành công", "success").then(function() {
+
+                    window.location.href = "http://localhost:8080/";
+                });
+
+                break;
+            default:
+            // Handle any other cases if needed
+        }
+    </script>
+
+</body>	
+
+</html>
